@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# Slackware build script for <appname>
+# Slackware build script for IAU SOFA C Libraries
 
-# Copyright <year> <you> <where you live>
+# Copyright 2021 Jonathan L. Kaus, Rochester, MN, USA
 # All rights reserved.
 #
 # Redistribution and use of this script, with or without modification, is
@@ -22,36 +22,10 @@
 #  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# |-----------------------------------------------------------------| #
-# REMOVE THIS ENTIRE BLOCK OF TEXT #
-#
-# A license is required, and we strongly suggest you use the above
-# BSD/MIT style license. We DO NOT accept "Public Domain" scripts.
-# Public domain is not valid in some countries, and no license is
-# worse than a "bad" license in those countries.
-#
-# This template is not meant to be a 'cut and paste' script to
-# enable any random user to make a working package.  While
-# we're certainly not discouraging use of this template, if
-# you haven't manually gone through each step of the process
-# without the build script (typically as a normal user, as this
-# will reveal problems that you won't see as root), then there's
-# a good chance that something important is missing from your
-# submission.
-
-# When using this template script, please remove as many of
-# these unnecessary comments as possible.  Commented code is
-# a good thing, but if it's obvious, there's no need to comment it.
-#
-# AGAIN, REMOVE THE COMMENTS IF THEY ARE NOT NEEDED - DON'T JUST
-# DELETE THIS BLOCK OF TEXT WITHOUT BOTHERING TO READ WHAT'S IN IT.
-#
-# |-----------------------------------------------------------------| #
-
-PRGNAM=appname			# replace with name of program
-VERSION=${VERSION:-1.4.1}	# replace with version of program
+PRGNAM=sofa_c
+VERSION=${VERSION:-20210512}
 BUILD=${BUILD:-1}
-TAG=${TAG:-_SBo}		# the "_SBo" is required
+TAG=${TAG:-_SBo}
 
 # Automatically determine the architecture we're building on:
 if [ -z "$ARCH" ]; then
@@ -64,9 +38,9 @@ if [ -z "$ARCH" ]; then
 fi
 
 CWD=$(pwd)
-TMP=${TMP:-/tmp/SBo}	# For consistency's sake, use this
+TMP=${TMP:-/tmp/SBo}
 PKG=$TMP/package-$PRGNAM
-OUTPUT=${OUTPUT:-/tmp}	# Drop the package in /tmp
+OUTPUT=${OUTPUT:-/tmp}
 
 if [ "$ARCH" = "i586" ]; then
   SLKCFLAGS="-O2 -march=i586 -mtune=i686"
@@ -83,15 +57,13 @@ else
 fi
 
 set -e # Exit on most errors
-# If you prefer to do selective error checking with
-#   command || exit 1
-# then that's also acceptable.
 
 rm -rf $PKG
 mkdir -p $TMP $PKG $OUTPUT
 cd $TMP
 rm -rf $PRGNAM-$VERSION
-tar xvf $CWD/$PRGNAM-$VERSION.tar.gz
+mkdir -p $PRGNAM-$VERSION/
+tar xvf $CWD/$PRGNAM-$VERSION.tar.gz -C $PRGNAM-$VERSION --strip-components=3
 cd $PRGNAM-$VERSION
 chown -R root:root .
 find -L . \
@@ -100,25 +72,13 @@ find -L . \
  \( -perm 666 -o -perm 664 -o -perm 640 -o -perm 600 -o -perm 444 \
   -o -perm 440 -o -perm 400 \) -exec chmod 644 {} \;
 
-# Your application will probably need different configure flags;
-# these are provided as an example only.
-# Be sure to build only shared libraries unless there's some need for
-# static.
-CFLAGS="$SLKCFLAGS" \
-CXXFLAGS="$SLKCFLAGS" \
-./configure \
-  --prefix=/usr \
-  --libdir=/usr/lib${LIBDIRSUFFIX} \
-  --sysconfdir=/etc \
-  --localstatedir=/var \
-  --mandir=/usr/man \
-  --docdir=/usr/doc/$PRGNAM-$VERSION \
-  --disable-static \
-  --build=$ARCH-slackware-linux
+# Apply patch to the manual.lis file...
+patch -p0 < $CWD/sofa_c-20210512_manual_lis.diff
 
 # Compile the application and install it into the $PKG directory
-make
-make install DESTDIR=$PKG
+SOFA_LIB_DIR=$PKG/usr/lib${LIBDIRSUFFIX} \
+            SOFA_INC_DIR=$PKG/usr/include \
+            CFLAGF="-c -pedantic -Wall ${SLKCFLAGS}" make -e -C src/ install
 
 # Strip binaries and libraries - this can be done with 'make install-strip'
 # in many source trees, and that's usually acceptable if so, but if not,
@@ -126,41 +86,31 @@ make install DESTDIR=$PKG
 find $PKG -print0 | xargs -0 file | grep -e "executable" -e "shared object" | grep ELF \
   | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
 
-# Compress man pages
-# If the man pages are installed to /usr/share/man instead, you'll need to either
-# add the --mandir=/usr/man flag to configure or move them manually after the
-# make install process is run.
-find $PKG/usr/man -type f -exec gzip -9 {} \;
-for i in $( find $PKG/usr/man -type l ) ; do ln -s $( readlink $i ).gz $i.gz ; rm $i ; done
+if [ -n "$GEN_MAN_PAGES" ]; then
+    # Generate man pages from the manual.lis doc file, and headers.
+    mkdir -p $PKG/usr/man/man3
+    $CWD/create-man-pages.pl src/sofa.h "math.h" doc/manual.lis $PRGNAM $VERSION "IAU SOFA C Manual" $PKG/usr/man/man3
 
-# Compress info pages and remove the package's dir file
-# If no info pages are installed by the software, don't leave this in the script
-rm -f $PKG/usr/info/dir
-gzip -9 $PKG/usr/info/*.info*
-
-# Remove perllocal.pod and other special files that don't need to be installed,
-# as they will overwrite what's already on the system.  If this is not needed,
-# remove it from the script.
-# Remove 'special' files
-find $PKG -name perllocal.pod \
-  -o -name ".packlist" \
-  -o -name "*.bs" \
-  | xargs rm -f
+    # Compress man pages
+    # If the man pages are installed to /usr/share/man instead, you'll need to either
+    # add the --mandir=/usr/man flag to configure or move them manually after the
+    # make install process is run.
+    find $PKG/usr/man -type f -exec gzip -9 {} \;
+    for i in $( find $PKG/usr/man -type l ) ; do ln -s $( readlink $i ).gz $i.gz ; rm $i ; done
+fi
 
 # Copy program documentation into the package
-# The included documentation varies from one application to another, so be sure
-# to adjust your script as needed
 # Also, include the SlackBuild script in the documentation directory
 mkdir -p $PKG/usr/doc/$PRGNAM-$VERSION
 cp -a \
-  <documentation> \
+   00READ.ME \
+   doc/* \
   $PKG/usr/doc/$PRGNAM-$VERSION
 cat $CWD/$PRGNAM.SlackBuild > $PKG/usr/doc/$PRGNAM-$VERSION/$PRGNAM.SlackBuild
 
 # Copy the slack-desc (and a custom doinst.sh if necessary) into ./install
 mkdir -p $PKG/install
 cat $CWD/slack-desc > $PKG/install/slack-desc
-cat $CWD/doinst.sh > $PKG/install/doinst.sh
 
 # Make the package; be sure to leave it in $OUTPUT
 # If package symlinks need to be created during install *before*

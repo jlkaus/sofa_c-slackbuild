@@ -1,0 +1,13 @@
+sofa_c (IAU SOFA Astronomy C Library)
+
+Official C implementations of the IAU algorithms for fundamental
+astronomy computations.
+
+Refer to https://www.iausofa.org/index.html for more details.
+
+Note: By default, just installs the IAU SOFA C library and the included
+documentation in /usr/share/doc.  If GEN_MAN_PAGES is defined in the
+environment, attempts to convert the SOFA manual into proper man pages for each
+function, and installs them in section 3.  A rough perl script to generate the
+man pages is included, but may break with future SOFA releases if the manual.lis
+file format changes too much.

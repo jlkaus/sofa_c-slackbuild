@@ -1,0 +1,11 @@
+--- doc/manual.lis	2021-08-07 14:52:40.219097165 -0500
++++ fix/doc/manual.lis.new	2021-08-07 14:54:07.284106157 -0500
+@@ -406,7 +406,7 @@
+      ATCO13    ICRS -> observed
+      ATIC13    CIRS -> ICRS
+      ATICQ     quick CIRS -> ICRS
+-     ATCIQN    quick CIRS -> ICRS, multiple deflections
++     ATICQN    quick CIRS -> ICRS, multiple deflections
+      ATIO13    CIRS -> observed
+      ATIOQ     quick CIRS -> observed
+      ATOC13    observed -> astrometric ICRS
